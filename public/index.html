@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Real-time Code Sharing Board</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        #container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        #codeArea {
+            width: 100%;
+            height: 500px;
+            font-family: monospace;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        #status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        #roomInfo {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <button id="createRoom" class="button">Create New Room</button>
+            <input type="text" id="roomInput" placeholder="Enter Room ID">
+            <button id="joinRoom" class="button">Join Room</button>
+            <button id="formatCode" class="button">Format Code</button>
+        </div>
+        <div id="roomInfo"></div>
+        <div id="status"></div>
+        <textarea id="codeArea" placeholder="Start coding here..."></textarea>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentRoom = null;
+
+        const codeArea = document.getElementById('codeArea');
+        const createRoomBtn = document.getElementById('createRoom');
+        const joinRoomBtn = document.getElementById('joinRoom');
+        const formatCodeBtn = document.getElementById('formatCode');
+        const roomInput = document.getElementById('roomInput');
+        const roomInfo = document.getElementById('roomInfo');
+        const status = document.getElementById('status');
+
+        createRoomBtn.addEventListener('click', () => {
+            socket.emit('createRoom');
+        });
+
+        joinRoomBtn.addEventListener('click', () => {
+            const roomId = roomInput.value.trim();
+            if (roomId) {
+                socket.emit('joinRoom', roomId);
+            }
+        });
+
+        formatCodeBtn.addEventListener('click', () => {
+            if (currentRoom) {
+                socket.emit('formatCode', {
+                    roomId: currentRoom,
+                    code: codeArea.value
+                });
+            }
+        });
+
+        codeArea.addEventListener('input', () => {
+            if (currentRoom) {
+                socket.emit('codeUpdate', {
+                    roomId: currentRoom,
+                    code: codeArea.value
+                });
+            }
+        });
+
+        // Socket event handlers
+        socket.on('roomCreated', (roomId) => {
+            currentRoom = roomId;
+            roomInfo.textContent = `Room ID: ${roomId}`;
+            status.textContent = 'Room created successfully!';
+            socket.emit('joinRoom', roomId);
+        });
+
+        socket.on('roomJoined', (roomId) => {
+            currentRoom = roomId;
+            roomInfo.textContent = `Room ID: ${roomId}`;
+            status.textContent = 'Joined room successfully!';
+        });
+
+        socket.on('initialCode', (code) => {
+            codeArea.value = code;
+        });
+
+        socket.on('codeUpdated', (code) => {
+            codeArea.value = code;
+        });
+
+        socket.on('codeFormatted', (formattedCode) => {
+            codeArea.value = formattedCode;
+        });
+
+        socket.on('userCount', (count) => {
+            status.textContent = `Connected users: ${count}`;
+        });
+
+        socket.on('error', (message) => {
+            status.textContent = `Error: ${message}`;
+        });
+    </script>
+</body>
+</html>
